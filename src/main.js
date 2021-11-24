@@ -3,6 +3,10 @@
 import Vue from 'vue'
 import App from './App'
 
+// define a global event bus
+// ensure that the name (eventBus in this case) is unique otherwise you may overwrite something else on the window object
+window.eventBus = new Vue()
+
 Vue.config.productionTip = false
 
 /* eslint-disable no-new */

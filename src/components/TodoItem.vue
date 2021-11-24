@@ -40,8 +40,15 @@
       />
     </div>
 
-    <!-- when we click the 'x' button, it runs the removeTodo method in the methods below and deletes the item -->
-    <div class="remove-item" @click="removeTodo(index)">&times;</div>
+    <!-- we are adding this other div so we can demonstrate communication between child components with a fancy but impractical example here where we pluralize a todo -->
+    <div>
+      <button @click="pluralize">Plural</button>
+
+      <!-- when we click the 'x' button, it runs the removeTodo method in the methods below and deletes the item -->
+      <span class="remove-item" @click="removeTodo(index)">
+        &times;
+      </span>
+    </div>
   </div>
 </template>
 
@@ -77,6 +84,18 @@ export default {
     };
   },
 
+  //   listens to the event emitted from the pluralize method below and runs the handlePluralize method in response
+  created() {
+    eventBus.$on("pluralize", this.handlePluralize);
+  },
+
+  // a weird side effect of demonstrating communication between child components by pluralizing a all todos using the Plural button on one todo is that in the case where you add a bunch of todos, and check off some, and delete them, then click the Plural button to pluralize the todos, some of the deleted items shall come back to the list of todos
+  // this is because the event handler for the deleted item is still alive even though we deleted that component already. we have, therefore, to make sure that we remove that event listener right before it is destroyed, which is what we are doing below
+//   clean up the event handlers if we no longer need them
+  beforeDestroy() {
+    eventBus.$off("pluralize", this.handlePluralize);
+  },
+
   // we have an issue where we click the check all box, but the checkboxes for the individual todos are not checked as a result, but the 'Clear Completed' button shows and the 'x items left' also updates. As a results, the single source of truth is updated (the completed property for the tasks is updated to True) but the data for the individual todos on the Vue Dev tools on the browser indicates that the completed property is still false. We therefore use a watcher. A watcher is a way to watch props and when they change. We are going to listed for when the above checkAll prop changes, and if it's true, set the completed property for this todo item to True.
   watch: {
     checkAll() {
@@ -107,7 +126,8 @@ export default {
     // since we don't have access to the todos array, we can therefore emit an event, and listen for that event in the parent component so that the parent can do what needs to be done. to call an event, you use the $emit method, and to listen for an event, you use the $on method.
     // the two parameters for the $emit method are the name of the event, and the data that you want to pass to the event. the $on method takes two parameters, the name of the event, and a callback function that will be run when the event is emitted.
     removeTodo(index) {
-      this.$emit("removedTodo", index);
+      // since we are now using the global event bus called eventBus we created in main.js, we switch from this.$emit to eventBus.$emit
+      eventBus.$emit("removedTodo", index);
     },
     // we have moved this method from the parent component to here
     // we no longer use any reference to todo because now we are using local data, so editTodo(todo) becomes editTodo() and todo.title becomes this.title
@@ -132,7 +152,9 @@ export default {
 
       //   emit an event to the parent component so that the parent component can update the todos array (since we are passing in as a prop here, we have to notify the parent that it has changed)
       //   however if we only do this we shall be in a state where the todo item and the single source of truth todos are in different states. so we have to replace the todo in todos in the parent component with the updated todo we updated here in the child component
-      this.$emit("finishedEdit", {
+
+      // since we are now using the global event bus called eventBus we created in main.js, we switch from this.$emit to eventBus.$emit
+      eventBus.$emit("finishedEdit", {
         index: this.index,
         todo: {
           id: this.id,
@@ -150,6 +172,25 @@ export default {
 
       // we set the todo to non-editing mode when we press the Esc button
       this.editing = false;
+    },
+
+    pluralize() {
+      eventBus.$emit("pluralize");
+    },
+
+    handlePluralize() {
+      this.title = this.title + "s";
+
+      // the above changes only the todo item but does not change the single source of truth. to change the single source of truth too, we emit another event named finishedEdit (similar to the one above) and pass in the updated todo item
+      eventBus.$emit("finishedEdit", {
+        index: this.index,
+        todo: {
+          id: this.id,
+          title: this.title,
+          completed: this.completed,
+          editing: this.editing
+        }
+      });
     }
   }
 };

@@ -19,65 +19,37 @@
 
       <!-- :todo="todo" and :index="index" are props representing the current todo we are iterating over (props are used for communication from parent to child component, custom events are used for communication from child to parent component). these props are accepted in the child component via the props property -->
 
-      <!-- with @removedTodo="removeTodo", we are listening for an event from the child template todo-item, and after listening, we call the normal removeTodo method that we had created before. note we have passed the index from the event, which is what the method needs to delete the todo -->
+      <!-- :checkAll="" is a prop passed down to the child template TodoItem.vue -->
 
-      <!-- with @finishedEdit="finishedEdit", we are listening for an event from the child template todo-item, and after listening, we call the normal finishedEdit method -->
-
-      <!-- :checkAll="" is a prop -->
+      <!-- since we are now using the event bus named eventBus defined in main.js, we remove @removedTodo="removeTodo" and @finishedEdit="finishedEdit" and instead define them in the script section under created() -->
       <todo-item
         v-for="(todo, index) in todosFiltered"
         :key="todo.id"
         :todo="todo"
         :index="index"
         :checkAll="!anyRemaining"
-        @removedTodo="removeTodo"
-        @finishedEdit="finishedEdit"
       >
-
       </todo-item>
     </transition-group>
 
     <div class="extra-container">
-      <div>
-        <label>
-          <!-- we want the checkbox automatically checked if all todos are checked, and not checked otherwise, so we use the computed property anyRemaining -->
-          <!-- we want all items to be automatically checked if I check this checkbox, so we use the @change event (represents clicking the checkbox), which calls the checkAllTodos method which we define below -->
-          <input
-            type="checkbox"
-            :checked="!anyRemaining"
-            @change="checkAllTodos"
-          />
-          Check All
-        </label>
-      </div>
-      <!-- remaining is going to be a computed property -->
-      <div>{{ remaining }} items left</div>
+      <!-- we moved the check button and made it its own component, and we are using it here with todo-check-all -->
+      <!-- the prop :anyRemaining="anyRemaining" was previously on the check button that was here, but now we have it here in the parent component to communicate with the child component that is the check button -->
+      <todo-check-all :anyRemaining="anyRemaining"></todo-check-all>
+
+      <!-- since we have create a separate component for the number of items remaining, we now pass it below, and include a prop, :remaining="remaining" to communicate with that child component  -->
+      <todo-items-remaining :remaining="remaining"></todo-items-remaining>
     </div>
     <div class="extra-container">
-      <div>
-        <!-- using conditional classes below, and the condition is based on the filter data property -->
-        <button :class="{ active: filter == 'all' }" @click="filter = 'all'">
-          All
-        </button>
-        <button
-          :class="{ active: filter == 'active' }"
-          @click="filter = 'active'"
-        >
-          Active
-        </button>
-        <button
-          :class="{ active: filter == 'completed' }"
-          @click="filter = 'completed'"
-        >
-          Completed
-        </button>
-      </div>
+      <todo-filtered></todo-filtered>
+
       <div>
         <!-- show the button only if there are completed items, so we use the computed property showClearCompletedButton, and then when the button is clicked, run the clearCompleted method to filter the todos to only show those that have not been completed -->
         <transition name="fade">
-          <button v-if="showClearCompletedButton" @click="clearCompleted">
-            Clear Completed
-          </button>
+          <!-- pass a prop to the child component -->
+          <todo-clear-completed
+            :showClearCompletedButton="showClearCompletedButton"
+          ></todo-clear-completed>
         </transition>
       </div>
     </div>
@@ -85,20 +57,29 @@
 </template>
 
 <script>
+import TodoCheckAll from "./TodoCheckAll.vue";
 import TodoItem from "./TodoItem";
+import TodoItemsRemaining from "./TodoItemsRemaining.vue";
+import TodoFiltered from "./TodoFiltered";
+import TodoClearCompleted from "./TodoClearCompleted";
 
 export default {
   name: "todo-list",
 
   components: {
-    TodoItem
+    TodoItem,
+    TodoItemsRemaining,
+    TodoCheckAll,
+    TodoFiltered,
+    TodoClearCompleted,
   },
 
   data() {
     return {
       newTodo: "",
       idForTodo: 3, // increment this to create unique ids for each todo after the first 2 that existed
-      beforeEditCache: "",
+
+      //   even though we have moved the identical property to the child component, we still have this one here because it controls the computed property todosFiltered
       filter: "all",
 
       //   list of todos
@@ -107,16 +88,37 @@ export default {
           id: 1,
           title: "Finish Vue screencast",
           completed: false,
-          editing: false // this is for editing the todo - checks if we are in editing mode or not
+          editing: false, // this is for editing the todo - checks if we are in editing mode or not
         },
         {
           id: 2,
           title: "Take over world",
           completed: false,
-          editing: false
-        }
-      ]
+          editing: false,
+        },
+      ],
     };
+  },
+
+  // listening for events from any component in this created section
+  // since we are now using the event bus named eventBus defined in main.js, we remove @removedTodo="removeTodo" and @finishedEdit="finishedEdit" from <todo-item></todo-item> above when listening for events fired from the event bus named eventBus, and instead define them here
+  created() {
+    //   this is where we receive the various events fired from the child elements and act on them eg run a particular function
+    eventBus.$on("removedTodo", (index) => this.removeTodo(index));
+    eventBus.$on("finishedEdit", (data) => this.finishedEdit(data));
+    eventBus.$on("checkAllChanged", (checked) => this.checkAllTodos(checked));
+    eventBus.$on("filterChanged", (filter) => (this.filter = filter));
+    eventBus.$on("clearCompletedTodos", () => this.clearCompleted());
+  },
+
+  //we have, therefore, to make sure that we remove the various event listeners up here right before they are destroyed, which is what we are doing below
+  //   clean up the event handlers if we no longer need them
+  beforeDestroy() {
+    eventBus.$off("removedTodo", (index) => this.removeTodo(index));
+    eventBus.$off("finishedEdit", (data) => this.finishedEdit(data));
+    eventBus.$off("checkAllChanged", (checked) => this.checkAllTodos(checked));
+    eventBus.$off("filterChanged", (filter) => (this.filter = filter));
+    eventBus.$off("clearCompletedTodos", () => this.clearCompleted());
   },
 
   computed: {
@@ -124,7 +126,7 @@ export default {
 
     // grab our todos, filter down to those that are not completed, and then count them
     remaining() {
-      return this.todos.filter(todo => !todo.completed).length;
+      return this.todos.filter((todo) => !todo.completed).length;
     },
     anyRemaining() {
       return this.remaining != 0;
@@ -134,16 +136,16 @@ export default {
       if (this.filter == "all") {
         return this.todos;
       } else if (this.filter == "active") {
-        return this.todos.filter(todo => !todo.completed);
+        return this.todos.filter((todo) => !todo.completed);
       } else if (this.filter == "completed") {
-        return this.todos.filter(todo => todo.completed);
+        return this.todos.filter((todo) => todo.completed);
       }
 
       return this.todos;
     },
     showClearCompletedButton() {
-      return this.todos.filter(todo => todo.completed).length > 0;
-    }
+      return this.todos.filter((todo) => todo.completed).length > 0;
+    },
   },
 
   methods: {
@@ -157,7 +159,7 @@ export default {
       this.todos.push({
         id: this.idForTodo,
         title: this.newTodo,
-        completed: false
+        completed: false,
       });
 
       //  after running the above function, make the newTodo empty again, and increment the idForTodo so that the next todo added is given a unique id that is higher than the previous todo
@@ -169,10 +171,10 @@ export default {
       this.todos.splice(index, 1);
     },
     checkAllTodos() {
-      this.todos.forEach(todo => (todo.completed = event.target.checked)); // well, mine doesn't work | kinda works now, error was me typing foreach instead of forEach
+      this.todos.forEach((todo) => (todo.completed = event.target.checked)); // well, mine doesn't work | kinda works now, error was me typing foreach instead of forEach
     },
     clearCompleted() {
-      this.todos = this.todos.filter(todo => !todo.completed);
+      this.todos = this.todos.filter((todo) => !todo.completed);
     },
     // this method takes in the parameter data, which is the data that we passed when creating the event named finishedEdit in the child component, so we have data.index and data.todo
     finishedEdit(data) {
@@ -180,8 +182,8 @@ export default {
 
       // according to the syntax of the javascript .splice() method, the first argument is the index of the item to remove, and the second argument is the number of items to remove, and the third argument is the item(s) to add in its place
       this.todos.splice(data.index, 1, data.todo);
-    }
-  }
+    },
+  },
 };
 </script>
 

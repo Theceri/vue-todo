@@ -1,6 +1,6 @@
 # todo-vue
 
-> A Vue.js project
+> A Vue.js project for Andre Madarang tutorial (https://www.youtube.com/playlist?list=PLEhEHUEU3x5q-xB1On4CsLPts0-rZ9oos)
 
 ## Build Setup
 
