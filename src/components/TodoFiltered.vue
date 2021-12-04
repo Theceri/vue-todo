@@ -5,10 +5,16 @@
     <button :class="{ active: filter == 'all' }" @click="changeFilter('all')">
       All
     </button>
-    <button :class="{ active: filter == 'active' }" @click="changeFilter('active')">
+    <button
+      :class="{ active: filter == 'active' }"
+      @click="changeFilter('active')"
+    >
       Active
     </button>
-    <button :class="{ active: filter == 'completed' }" @click="changeFilter('completed')">
+    <button
+      :class="{ active: filter == 'completed' }"
+      @click="changeFilter('completed')"
+    >
       Completed
     </button>
   </div>
@@ -18,18 +24,21 @@
 export default {
   name: "todo-filtered",
 
-  data() {
-    return {
-      // filter is a computed property that returns the filter value (was previously in the parent component)
-      filter: 'all',
+  // change the data property into a computed property now that we're working with Vuex for state management instead of props and events
+  computed: {
+    filter() {
+      return this.$store.state.filter;
     }
   },
 
   methods: {
-    //   this method fires an event named checkAllChanged from this child component to the parent component TodoList.vue
     changeFilter(filter) {
-      this.filter = filter;
-      eventBus.$emit("filterChanged", filter);
+      // now using mutations to mutate the state instead of doing it directly like we had done in the code commented out below (we move the logic to the mutations)
+      // since we are now working with actions and mutators in store.js, we change .commit() to .dispatch()
+      this.$store.dispatch('updateFilter', filter);
+
+      // update this.filter to this.$store.state.filter
+      // this.$store.state.filter = filter;
     }
   }
 };

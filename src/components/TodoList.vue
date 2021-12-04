@@ -33,12 +33,11 @@
     </transition-group>
 
     <div class="extra-container">
-      <!-- we moved the check button and made it its own component, and we are using it here with todo-check-all -->
-      <!-- the prop :anyRemaining="anyRemaining" was previously on the check button that was here, but now we have it here in the parent component to communicate with the child component that is the check button -->
-      <todo-check-all :anyRemaining="anyRemaining"></todo-check-all>
+      <todo-check-all></todo-check-all>
 
       <!-- since we have create a separate component for the number of items remaining, we now pass it below, and include a prop, :remaining="remaining" to communicate with that child component  -->
-      <todo-items-remaining :remaining="remaining"></todo-items-remaining>
+      <!-- We now remove the prop :remaining="remaining" because we are now working with the store in Vuex state management -->
+      <todo-items-remaining></todo-items-remaining>
     </div>
     <div class="extra-container">
       <todo-filtered></todo-filtered>
@@ -47,9 +46,7 @@
         <!-- show the button only if there are completed items, so we use the computed property showClearCompletedButton, and then when the button is clicked, run the clearCompleted method to filter the todos to only show those that have not been completed -->
         <transition name="fade">
           <!-- pass a prop to the child component -->
-          <todo-clear-completed
-            :showClearCompletedButton="showClearCompletedButton"
-          ></todo-clear-completed>
+          <todo-clear-completed></todo-clear-completed>
         </transition>
       </div>
     </div>
@@ -71,81 +68,24 @@ export default {
     TodoItemsRemaining,
     TodoCheckAll,
     TodoFiltered,
-    TodoClearCompleted,
+    TodoClearCompleted
   },
 
   data() {
     return {
       newTodo: "",
       idForTodo: 3, // increment this to create unique ids for each todo after the first 2 that existed
-
-      //   even though we have moved the identical property to the child component, we still have this one here because it controls the computed property todosFiltered
-      filter: "all",
-
-      //   list of todos
-      todos: [
-        {
-          id: 1,
-          title: "Finish Vue screencast",
-          completed: false,
-          editing: false, // this is for editing the todo - checks if we are in editing mode or not
-        },
-        {
-          id: 2,
-          title: "Take over world",
-          completed: false,
-          editing: false,
-        },
-      ],
     };
-  },
-
-  // listening for events from any component in this created section
-  // since we are now using the event bus named eventBus defined in main.js, we remove @removedTodo="removeTodo" and @finishedEdit="finishedEdit" from <todo-item></todo-item> above when listening for events fired from the event bus named eventBus, and instead define them here
-  created() {
-    //   this is where we receive the various events fired from the child elements and act on them eg run a particular function
-    eventBus.$on("removedTodo", (index) => this.removeTodo(index));
-    eventBus.$on("finishedEdit", (data) => this.finishedEdit(data));
-    eventBus.$on("checkAllChanged", (checked) => this.checkAllTodos(checked));
-    eventBus.$on("filterChanged", (filter) => (this.filter = filter));
-    eventBus.$on("clearCompletedTodos", () => this.clearCompleted());
-  },
-
-  //we have, therefore, to make sure that we remove the various event listeners up here right before they are destroyed, which is what we are doing below
-  //   clean up the event handlers if we no longer need them
-  beforeDestroy() {
-    eventBus.$off("removedTodo", (index) => this.removeTodo(index));
-    eventBus.$off("finishedEdit", (data) => this.finishedEdit(data));
-    eventBus.$off("checkAllChanged", (checked) => this.checkAllTodos(checked));
-    eventBus.$off("filterChanged", (filter) => (this.filter = filter));
-    eventBus.$off("clearCompletedTodos", () => this.clearCompleted());
   },
 
   computed: {
     //a computed property is for computing new data derived from other data 1) they should not mutate any of your data 2) they should not accept paramenters 3) they should always return something
-
-    // grab our todos, filter down to those that are not completed, and then count them
-    remaining() {
-      return this.todos.filter((todo) => !todo.completed).length;
-    },
     anyRemaining() {
-      return this.remaining != 0;
+      return this.$store.getters.anyRemaining;
     },
     todosFiltered() {
-      // Caused by the buttons we have included in the bottom for All, Active, and Completed - filter the list of todos so that we loop through and list all todos if the All button is clicked, loop through and list only those that are not completed if the Active button is clicked, and loop through and list only those that are completed if the Completed button is clicked
-      if (this.filter == "all") {
-        return this.todos;
-      } else if (this.filter == "active") {
-        return this.todos.filter((todo) => !todo.completed);
-      } else if (this.filter == "completed") {
-        return this.todos.filter((todo) => todo.completed);
-      }
-
-      return this.todos;
-    },
-    showClearCompletedButton() {
-      return this.todos.filter((todo) => todo.completed).length > 0;
-    },
+      return this.$store.getters.todosFiltered;
+    }
   },
 
   methods: {
@@ -155,35 +95,26 @@ export default {
         return;
       }
 
-      //  add the new todo to the todos array
-      this.todos.push({
+      // here where we are adding a new todo and pushing it to the todos array (instead of doing it the old way by mutating state directly[which we have commented out below], we are using a mutator, which is the recommended way), this is where we need to call a mutation. you use the commit method, which takes in parameters ie the name of the mutation and the payload. the payload is the data that you want to pass to the mutation. we then go to store.js and define the 'addTodo' mutation there.
+      // now when you add an item and, using Vue Dev tools on Google Chrome, in the Vuex section, you can see the state changing when we add a new todo
+      // since we are now working with actions and mutators in store.js, we change .commit() to .dispatch()
+      this.$store.dispatch("addTodo", {
         id: this.idForTodo,
         title: this.newTodo,
-        completed: false,
       });
+
+      //  add the new todo to the todos array
+      // this.$store.state.todos.push({
+      //   id: this.idForTodo,
+      //   title: this.newTodo,
+      //   completed: false
+      // });
 
       //  after running the above function, make the newTodo empty again, and increment the idForTodo so that the next todo added is given a unique id that is higher than the previous todo
       this.newTodo = "";
       this.idForTodo++;
-    },
-    removeTodo(index) {
-      //   remove the todo at the given index. the splice method removes the item at the given index, and returns the item that was removed. the second argument is the number of items to remove.
-      this.todos.splice(index, 1);
-    },
-    checkAllTodos() {
-      this.todos.forEach((todo) => (todo.completed = event.target.checked)); // well, mine doesn't work | kinda works now, error was me typing foreach instead of forEach
-    },
-    clearCompleted() {
-      this.todos = this.todos.filter((todo) => !todo.completed);
-    },
-    // this method takes in the parameter data, which is the data that we passed when creating the event named finishedEdit in the child component, so we have data.index and data.todo
-    finishedEdit(data) {
-      // update the todos, which is the single source of truth. the index is coming in as the data.index, we are replacing one item, and we are replacing it with data.todo. we have updated the single source of truth, so everything is now in sync
-
-      // according to the syntax of the javascript .splice() method, the first argument is the index of the item to remove, and the second argument is the number of items to remove, and the third argument is the item(s) to add in its place
-      this.todos.splice(data.index, 1, data.todo);
-    },
-  },
+    }
+  }
 };
 </script>
 

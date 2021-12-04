@@ -91,7 +91,7 @@ export default {
 
   // a weird side effect of demonstrating communication between child components by pluralizing a all todos using the Plural button on one todo is that in the case where you add a bunch of todos, and check off some, and delete them, then click the Plural button to pluralize the todos, some of the deleted items shall come back to the list of todos
   // this is because the event handler for the deleted item is still alive even though we deleted that component already. we have, therefore, to make sure that we remove that event listener right before it is destroyed, which is what we are doing below
-//   clean up the event handlers if we no longer need them
+  //   clean up the event handlers if we no longer need them
   beforeDestroy() {
     eventBus.$off("pluralize", this.handlePluralize);
   },
@@ -125,9 +125,10 @@ export default {
   methods: {
     // since we don't have access to the todos array, we can therefore emit an event, and listen for that event in the parent component so that the parent can do what needs to be done. to call an event, you use the $emit method, and to listen for an event, you use the $on method.
     // the two parameters for the $emit method are the name of the event, and the data that you want to pass to the event. the $on method takes two parameters, the name of the event, and a callback function that will be run when the event is emitted.
-    removeTodo(index) {
-      // since we are now using the global event bus called eventBus we created in main.js, we switch from this.$emit to eventBus.$emit
-      eventBus.$emit("removedTodo", index);
+    removeTodo(id) {
+      // now that we are using mutators to mutate the state instead of mutating the state directly like we had done with the logic that we had here before, we move that logic to the mutator deleteTodo in store.js
+      // since we are now working with actions and mutators in store.js, we change .commit() to .dispatch()
+      this.$store.dispatch('deleteTodo', id);
     },
     // we have moved this method from the parent component to here
     // we no longer use any reference to todo because now we are using local data, so editTodo(todo) becomes editTodo() and todo.title becomes this.title
@@ -141,6 +142,7 @@ export default {
 
     // we no longer use any reference to todo because now we are using local data
     // now that we have brought this method here from the parent component TodoList.vue, we need to emit an event to the parent component so that the parent component can update the todos array
+    // doneEdit() commits a change whenever we double click and edit a todo item
     doneEdit() {
       // check that after editing the todo, the text box is not empty
       if (this.title.trim() == "") {
@@ -150,18 +152,30 @@ export default {
       //  set the todo to non-editing mode when we click outside the text box or press enter after editing
       this.editing = false;
 
-      //   emit an event to the parent component so that the parent component can update the todos array (since we are passing in as a prop here, we have to notify the parent that it has changed)
-      //   however if we only do this we shall be in a state where the todo item and the single source of truth todos are in different states. so we have to replace the todo in todos in the parent component with the updated todo we updated here in the child component
+      // move the logic that was below here to the mutator updateTodo in store.js so that we do not mutate the state directly
+      // since we are now working with actions and mutators in store.js, we change .commit() to .dispatch()
+      this.$store.dispatch('updateTodo', {
+        'id': this.id,
+        'title': this.title,
+        'completed': this.completed,
+        'editing': this.editing
+      });
 
-      // since we are now using the global event bus called eventBus we created in main.js, we switch from this.$emit to eventBus.$emit
-      eventBus.$emit("finishedEdit", {
-        index: this.index,
-        todo: {
-          id: this.id,
-          title: this.title,
-          completed: this.completed,
-          editing: this.editing
-        }
+      // we now bring this from the main TodoList.vue component instead of emitting an event to the parent component TodoList.vue like we had done before
+
+      // update the todos, which is the single source of truth. the index is coming in as the data.index, we are replacing one item, and we are replacing it with data.todo. we have updated the single source of truth, so everything is now in sync
+
+      // according to the syntax of the javascript .splice() method, the first argument is the index of the item to remove, and the second argument is the number of items to remove, and the third argument is the item(s) to add in its place
+      //   remember the findIndex method returns the index of the first item that matches the condition, and if there is no match, it returns -1. in this case, it returns the index that of the item that fulfills the condition item.id === data.id and then changes the item to reflect the new edited data
+      const index = this.$store.state.todos.findIndex(
+        item => item.id == this.id
+      );
+      //   we replace the third argument data with the data that we had previously passed with the event we were firing to the parent component TodoList.vue (the todo object)
+      this.$store.state.todos.splice(index, 1, {
+        'id': this.id,
+        'title': this.title,
+        'completed': this.completed,
+        'editing': this.editing
       });
     },
 
@@ -174,6 +188,7 @@ export default {
       this.editing = false;
     },
 
+    // even when using Vuex for state management instead of props and events, we still need to emit this event because the title lives on the todo item and it is not within the global store
     pluralize() {
       eventBus.$emit("pluralize");
     },
@@ -182,14 +197,35 @@ export default {
       this.title = this.title + "s";
 
       // the above changes only the todo item but does not change the single source of truth. to change the single source of truth too, we emit another event named finishedEdit (similar to the one above) and pass in the updated todo item
-      eventBus.$emit("finishedEdit", {
-        index: this.index,
-        todo: {
-          id: this.id,
-          title: this.title,
-          completed: this.completed,
-          editing: this.editing
-        }
+    //   comment this out for now since we are now using Vuex state management
+    
+    //   eventBus.$emit("finishedEdit", {
+    //     todo: {
+    //       'id': this.id,
+    //       'title': this.title,
+    //       'completed': this.completed,
+    //       'editing': this.editing
+    //     }
+    //   });
+    
+// ---------------
+
+    // we now bring this from the main TodoList.vue component instead of emitting an event to the parent component TodoList.vue like we had done before
+
+      // update the todos, which is the single source of truth. the index is coming in as the data.index, we are replacing one item, and we are replacing it with data.todo. we have updated the single source of truth, so everything is now in sync
+
+      // according to the syntax of the javascript .splice() method, the first argument is the index of the item to remove, and the second argument is the number of items to remove, and the third argument is the item(s) to add in its place
+      //   remember the findIndex method returns the index of the first item that matches the condition, and if there is no match, it returns -1. in this case, it returns the index that of the item that fulfills the condition item.id === data.id and then changes the item to reflect the new edited data
+      const index = this.$store.state.todos.findIndex(
+        item => item.id == this.id
+      );
+      
+      //   we replace the third argument data with the data that we had previously passed with the event we were firing to the parent component TodoList.vue (the todo object)
+      this.$store.state.todos.splice(index, 1, {
+        'id': this.id,
+        'title': this.title,
+        'completed': this.completed,
+        'editing': this.editing
       });
     }
   }
