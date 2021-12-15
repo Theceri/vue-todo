@@ -45,7 +45,7 @@
       <button @click="pluralize">Plural</button>
 
       <!-- when we click the 'x' button, it runs the removeTodo method in the methods below and deletes the item -->
-      <span class="remove-item" @click="removeTodo(index)">
+      <span class="remove-item" @click="removeTodo(todo.id)">
         &times;
       </span>
     </div>
@@ -128,7 +128,7 @@ export default {
     removeTodo(id) {
       // now that we are using mutators to mutate the state instead of mutating the state directly like we had done with the logic that we had here before, we move that logic to the mutator deleteTodo in store.js
       // since we are now working with actions and mutators in store.js, we change .commit() to .dispatch()
-      this.$store.dispatch('deleteTodo', id);
+      this.$store.dispatch("deleteTodo", id);
     },
     // we have moved this method from the parent component to here
     // we no longer use any reference to todo because now we are using local data, so editTodo(todo) becomes editTodo() and todo.title becomes this.title
@@ -154,11 +154,11 @@ export default {
 
       // move the logic that was below here to the mutator updateTodo in store.js so that we do not mutate the state directly
       // since we are now working with actions and mutators in store.js, we change .commit() to .dispatch()
-      this.$store.dispatch('updateTodo', {
-        'id': this.id,
-        'title': this.title,
-        'completed': this.completed,
-        'editing': this.editing
+      this.$store.dispatch("updateTodo", {
+        id: this.id,
+        title: this.title,
+        completed: this.completed,
+        editing: this.editing
       });
 
       // we now bring this from the main TodoList.vue component instead of emitting an event to the parent component TodoList.vue like we had done before
@@ -172,10 +172,10 @@ export default {
       );
       //   we replace the third argument data with the data that we had previously passed with the event we were firing to the parent component TodoList.vue (the todo object)
       this.$store.state.todos.splice(index, 1, {
-        'id': this.id,
-        'title': this.title,
-        'completed': this.completed,
-        'editing': this.editing
+        id: this.id,
+        title: this.title,
+        completed: this.completed,
+        editing: this.editing
       });
     },
 
@@ -196,38 +196,14 @@ export default {
     handlePluralize() {
       this.title = this.title + "s";
 
-      // the above changes only the todo item but does not change the single source of truth. to change the single source of truth too, we emit another event named finishedEdit (similar to the one above) and pass in the updated todo item
-    //   comment this out for now since we are now using Vuex state management
-    
-    //   eventBus.$emit("finishedEdit", {
-    //     todo: {
-    //       'id': this.id,
-    //       'title': this.title,
-    //       'completed': this.completed,
-    //       'editing': this.editing
-    //     }
-    //   });
-    
-// ---------------
-
-    // we now bring this from the main TodoList.vue component instead of emitting an event to the parent component TodoList.vue like we had done before
-
-      // update the todos, which is the single source of truth. the index is coming in as the data.index, we are replacing one item, and we are replacing it with data.todo. we have updated the single source of truth, so everything is now in sync
-
-      // according to the syntax of the javascript .splice() method, the first argument is the index of the item to remove, and the second argument is the number of items to remove, and the third argument is the item(s) to add in its place
-      //   remember the findIndex method returns the index of the first item that matches the condition, and if there is no match, it returns -1. in this case, it returns the index that of the item that fulfills the condition item.id === data.id and then changes the item to reflect the new edited data
-      const index = this.$store.state.todos.findIndex(
-        item => item.id == this.id
-      );
-      
-      //   we replace the third argument data with the data that we had previously passed with the event we were firing to the parent component TodoList.vue (the todo object)
-      this.$store.state.todos.splice(index, 1, {
-        'id': this.id,
-        'title': this.title,
-        'completed': this.completed,
-        'editing': this.editing
-      });
+      // since we are now working with actions and mutators in store.js, we change .commit() to .dispatch()
+      this.$store.dispatch("updateTodo", {
+        id: this.id,
+        title: this.title,
+        completed: this.completed,
+        editing: this.editing
+      })
     }
   }
-};
+}
 </script>

@@ -78,6 +78,13 @@ export default {
     };
   },
 
+  // add a new created lifecycle hook to this component
+  // for the purpose of fetching todos from the database
+  created() {
+    // dispatch an action to the store to get the todos from the local storage (note that if we were not using Vuex, we would have made the Axios Ajax call from here, grab the todos, and set them to the todos array)
+    this.$store.dispatch('retrieveTodos');
+  },
+
   computed: {
     //a computed property is for computing new data derived from other data 1) they should not mutate any of your data 2) they should not accept paramenters 3) they should always return something
     anyRemaining() {

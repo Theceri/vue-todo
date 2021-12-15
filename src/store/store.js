@@ -7,8 +7,10 @@
 
 import Vue from "vue";
 import Vuex from "vuex";
+import axios from 'axios'; // import axios for Ajax requests
 
 Vue.use(Vuex);
+axios.defaults.baseURL = 'http://localhost:8000/api/';
 
 // this is where we define the store
 export const store = new Vuex.Store({
@@ -19,19 +21,19 @@ export const store = new Vuex.Store({
     filter: "all",
 
     //   list of todos
-    todos: [
-      {
-        id: 1,
-        title: "Finish Vue screencast",
-        completed: false,
-        editing: false // this is for editing the todo - checks if we are in editing mode or not
-      },
-      {
-        id: 2,
-        title: "Take over world",
-        completed: false,
-        editing: false
-      }
+    todos: [ // we now make the array of todos empty (remove the data we had input before) so that we work with the data from the database
+      // {
+      //   id: 1,
+      //   title: "Finish Vue screencast",
+      //   completed: false,
+      //   editing: false // this is for editing the todo - checks if we are in editing mode or not
+      // },
+      // {
+      //   id: 2,
+      //   title: "Take over world",
+      //   completed: false,
+      //   editing: false
+      // }
     ]
   },
   getters: {
@@ -80,10 +82,10 @@ export const store = new Vuex.Store({
       const index = state.todos.findIndex(item => item.id == todo.id);
 
       state.todos.splice(index, 1, {
-        id: todo.id,
-        title: todo.title,
-        completed: todo.completed,
-        editing: todo.editing
+        'id': todo.id,
+        'title': todo.title,
+        'completed': todo.completed,
+        'editing': todo.editing
       });
     },
     deleteTodo(state, id) {
@@ -100,6 +102,10 @@ export const store = new Vuex.Store({
     },
     clearCompleted(state) {
       state.todos = state.todos.filter(todo => !todo.completed);
+    },
+    // define it after you reference it from the action retrieveTodos below
+    retrieveTodos(state, todos) {
+      state.todos = todos;
     }
   },
 
@@ -108,37 +114,102 @@ export const store = new Vuex.Store({
   // anything that's modifying state and you know that finally we shall put it in/through the database (eg addTodo, updateTodo, deleteTodo - some of the others are just local to the app, but we're going to grab all of them for now and put them here under actions etc)
   // instead of the state, we are now taking in context as the parameter
   actions: {
+    retrieveTodos(context) {
+      // use axios to connect to the Laravel API and fetch all todos for display on the UI
+      axios.get('/todos')
+        .then(response => {
+          // commit a mutation, then go and make that method up here in the mutations
+          context.commit('retrieveTodos', response.data);
+        })
+        .catch(error => {
+          console.log(error)
+        })
+    },
+
     // simulating an AJAX request using setTimeout (repeated for all other actions below)
-    // now there is going to be a delay of 1 second on all the actions eg adding a todo, updating a todo, deleting a todo, etc
+    // now there is going to be a delay of 100ms on all the actions eg adding a todo, updating a todo, deleting a todo, etc
     addTodo(context, todo) {
-      setTimeout(() => {
-        context.commit("addTodo", todo);
-      }, 1000);
+      // use axios to connect to the Laravel API and post a new todo
+      // add in the body of the request as an extra parameter
+      axios.post('/todos', {
+        title: todo.title,
+        completed: false // since the natural state of a new task is incomplete, we set it to false automatically when the task is created
+      })
+        .then(response => {
+          // commit a mutation, then go and make that method up here in the mutations
+          context.commit('addTodo', response.data);
+        })
+        .catch(error => {
+          console.log(error)
+        })
     },
     updateTodo(context, todo) {
-      setTimeout(() => {
-        context.commit("updateTodo", todo);
-      }, 1000);
+      // use axios to connect to the Laravel API and update a todo
+      // add in the body of the request as an extra parameter
+      // use the patch request method because we are editing
+      // add in to the uri the id of the todo we are editing
+      axios.patch('/todos/' + todo.id, {
+        title: todo.title,
+        completed: todo.completed
+      })
+        .then(response => {
+          // commit a mutation, then go and make that method up here in the mutations
+          context.commit("updateTodo", response.data);
+        })
+        .catch(error => {
+          console.log(error)
+        })
     },
     deleteTodo(context, id) {
-      setTimeout(() => {
-        context.commit("deleteTodo", id);
-      }, 1000);
+      // use axios to connect to the Laravel API and delete a todo
+      // use the delete http method because we are deleting
+      // add in to the uri the id of the todo we are deleting a particular item
+      axios.delete('/todos/' + id)
+        .then(response => {
+          // commit a mutation, then go and make that method up here in the mutations
+          context.commit("deleteTodo", id);
+        })
+        .catch(error => {
+          console.log(error)
+        })
     },
     checkAll(context, checked) {
-      setTimeout(() => {
-        context.commit("checkAll", checked);
-      }, 1000);
+      // use axios to connect to the Laravel API and change the completed status of a todo in the database from 0 to 1 if the task is checked on the front-end
+      // use the patch http method because we are changing the completed status of the todo
+      // pass in the extra parameter of the completed state of the todo
+      axios.patch('/todosCheckAll', {
+        completed: checked,
+      })
+        .then(response => {
+          // commit a mutation, then go and make that method up here in the mutations
+          context.commit("checkAll", checked);
+        })
+        .catch(error => {
+          console.log(error)
+        })
     },
     updateFilter(context, filter) {
-      setTimeout(() => {
-        context.commit("updateFilter", filter);
-      }, 1000);
+      context.commit("updateFilter", filter);
     },
     clearCompleted(context) {
-      setTimeout(() => {
-        context.commit("clearCompleted");
-      }, 1000);
+      const completed = context.state.todos.filter(todo => todo.completed).map(todo => todo.id)
+
+      // use axios to connect to the Laravel API and delete checked todos from the database
+      // use the delete http method because we are deleting
+      // here it is a bit different because we first need to parse in the data object when adding the extra parameter
+      // based on what we have in the destroyCompleted() method of the TodosController.php in the Laravel API, we are passing in the todos here within the data object
+      axios.delete('/todosDeleteCompleted', {
+        data: {
+          todos: completed
+        }
+      })
+        .then(response => {
+          // commit a mutation, then go and make that method up here in the mutations
+          context.commit("clearCompleted");
+        })
+        .catch(error => {
+          console.log(error)
+        })
     }
   }
 });
