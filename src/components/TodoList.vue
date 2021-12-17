@@ -8,6 +8,15 @@
       @keyup.enter="addTodo"
     />
 
+    <!-- this is the markup for the loading spinner for when we are waiting for tasks to load -->
+    <!-- we want the spinner to show only if the loading property of the state object in store.js is set to true ie show when the tasks are being loaded from the database, and stop showing when the tasks are loaded from the database -->
+    <div v-if="$store.state.loading" class="lds-ring">
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+
     <!-- changing the list to filter from todos to todosFiltered, which shall be a computed property. With the three buttons we have added at the bottom (All, Active and Completed), instead of looping through and displaying tasks statically like before, we shall now loop through and diplay tasks based on this computed property todosFiltered, which is dependend on the filter  -->
     <!-- the transition-group involves using the animate.css library for animations - here we are animating the list of tasks eg an animation when we add a new task -->
     <transition-group
@@ -74,7 +83,7 @@ export default {
   data() {
     return {
       newTodo: "",
-      idForTodo: 3, // increment this to create unique ids for each todo after the first 2 that existed
+      idForTodo: 3 // increment this to create unique ids for each todo after the first 2 that existed
     };
   },
 
@@ -82,7 +91,7 @@ export default {
   // for the purpose of fetching todos from the database
   created() {
     // dispatch an action to the store to get the todos from the local storage (note that if we were not using Vuex, we would have made the Axios Ajax call from here, grab the todos, and set them to the todos array)
-    this.$store.dispatch('retrieveTodos');
+    this.$store.dispatch("retrieveTodos");
   },
 
   computed: {
@@ -107,7 +116,7 @@ export default {
       // since we are now working with actions and mutators in store.js, we change .commit() to .dispatch()
       this.$store.dispatch("addTodo", {
         id: this.idForTodo,
-        title: this.newTodo,
+        title: this.newTodo
       });
 
       //  add the new todo to the todos array
@@ -226,5 +235,43 @@ button {
 .fade-enter,
 .fade-leave-to {
   opacity: 0;
+}
+
+// CSS for the spinning loader that shows when we are waiting for the todos to load from the database
+.lds-ring {
+  display: block;
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin: auto;
+}
+.lds-ring div {
+  box-sizing: border-box;
+  display: block;
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  margin: 8px;
+  border: 8px solid grey;
+  border-radius: 50%;
+  animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  border-color: grey transparent transparent transparent;
+}
+.lds-ring div:nth-child(1) {
+  animation-delay: -0.45s;
+}
+.lds-ring div:nth-child(2) {
+  animation-delay: -0.3s;
+}
+.lds-ring div:nth-child(3) {
+  animation-delay: -0.15s;
+}
+@keyframes lds-ring {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>
