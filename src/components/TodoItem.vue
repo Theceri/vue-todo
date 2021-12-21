@@ -96,7 +96,8 @@ export default {
     eventBus.$off("pluralize", this.handlePluralize);
   },
 
-  // we have an issue where we click the check all box, but the checkboxes for the individual todos are not checked as a result, but the 'Clear Completed' button shows and the 'x items left' also updates. As a results, the single source of truth is updated (the completed property for the tasks is updated to True) but the data for the individual todos on the Vue Dev tools on the browser indicates that the completed property is still false. We therefore use a watcher. A watcher is a way to watch props and when they change. We are going to listed for when the above checkAll prop changes, and if it's true, set the completed property for this todo item to True.
+  // we have an issue where we click the check all box, but the checkboxes for the individual todos are not checked as a result, but the 'Clear Completed' button shows and the 'x items left' also updates. As a result, the single source of truth is updated (the completed property for the tasks is updated to True) but the data for the individual todos on the Vue Dev tools on the browser indicates that the completed property is still false. We therefore use a watcher. A watcher is a way to watch props and when they change. We are going to listed for when the above checkAll prop changes, and if it's true, set the completed property for this todo item to True.
+  // One of the problems we are having when working to implement the Firebase Realtime Database (which ensures that changes reflect in all clients [eg browsers and mobile devices] when the data in the store is updated) is that once we update an item, the changes do not reflect in the other clients. While researching the error, we find in Vue dev tools that the prop we're passing in changed but the data did not change (shows the edited data). to fix that we go to the todo item (the TodoItem.vue component) and make a new watcher (in this case todo(){}) to watch when the todo prop changes and update the data accordingly***
   watch: {
     checkAll() {
       // with this, if we check the Check All checkbox, then all the check boxes for the indiviaual todos are checked
@@ -109,6 +110,12 @@ export default {
 
       //   replacing the above statement with a ternary operator to make it simpler
       this.completed = this.checkAll ? true : this.todo.completed;
+    },
+    
+    // watches when the todo() prop changes and updates our data accordingly
+    todo() {// update the properties
+      this.title = this.todo.title
+      this.completed = this.todo.completed
     }
   },
 

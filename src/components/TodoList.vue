@@ -90,6 +90,9 @@ export default {
   // add a new created lifecycle hook to this component
   // for the purpose of fetching todos from the database
   created() {
+    // since we are now using Firebase Realtime database
+    this.$store.dispatch('initRealtimeListeners')
+
     // dispatch an action to the store to get the todos from the local storage (note that if we were not using Vuex, we would have made the Axios Ajax call from here, grab the todos, and set them to the todos array)
     this.$store.dispatch("retrieveTodos");
   },
