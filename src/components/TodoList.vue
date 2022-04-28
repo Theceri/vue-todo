@@ -1,5 +1,6 @@
 <template>
   <div>
+    <div class="name-container">Welcome, {{ name }}</div>
     <input
       type="text"
       class="todo-input"
@@ -83,18 +84,21 @@ export default {
   data() {
     return {
       newTodo: "",
-      idForTodo: 3 // increment this to create unique ids for each todo after the first 2 that existed
+      idForTodo: 3, // increment this to create unique ids for each todo after the first 2 that existed
+      data: ""
     };
   },
 
   // add a new created lifecycle hook to this component
   // for the purpose of fetching todos from the database
   created() {
-    // since we are now using Firebase Realtime database
-    this.$store.dispatch('initRealtimeListeners')
-
     // dispatch an action to the store to get the todos from the local storage (note that if we were not using Vuex, we would have made the Axios Ajax call from here, grab the todos, and set them to the todos array)
     this.$store.dispatch("retrieveTodos");
+
+    // on the API, we have the uri /api/user, which gets the info of the currently logged in user. we can get the item on the name field, and use it to get the name of the user and display it on the page. so we make an ajax request when the component is loaded to do just that
+    this.$store.dispatch("retrieveName").then(response => {
+      this.name = response.data.name;
+    });
   },
 
   computed: {
@@ -139,8 +143,6 @@ export default {
 
 <style lang="scss">
 /* indicate that we shall be using scss */
-// importing animate.css animation library so we can use it to animate various elements
-@import url("https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css");
 
 .todo-input {
   width: 100%;
@@ -209,6 +211,10 @@ export default {
   border-top: 1px solid lightgrey;
   padding-top: 14px;
   margin-bottom: 14px;
+}
+
+.name-container {
+  margin-bottom: 16px;
 }
 
 button {

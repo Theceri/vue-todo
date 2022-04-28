@@ -2,6 +2,7 @@ import App from './App' // We are no longer using it as the entry point to our a
 import LandingPage from './components/marketing/LandingPage'
 import About from './components/marketing/About'
 import Login from './components/auth/Login'
+import Logout from './components/auth/Logout'
 import Register from './components/auth/Register'
 import TestTodosVariable from './components/marketing/TestTodosVariable'
 
@@ -15,7 +16,10 @@ const routes = [
     {
         path: '/todo',
         name: 'todo',
-        component: App
+        component: App,
+        meta: { // we are doing these navigational guards (which we shall specify in main.js) so that some routes can only be accessed when the user is logged in
+            requiresAuth: true,
+        }
     },
     {
         path: '/about',
@@ -25,12 +29,24 @@ const routes = [
     {
         path: '/login',
         name: 'login', 
-        component: Login
+        component: Login,
+        props: true,
+        meta: { // we are doing these navigational guards (which we shall specify in main.js) so that some routes can only be accessed when the user is logged in
+            requiresVisitor: true,
+        }
     },
     {
         path: '/register',
         name: 'register',
-        component: Register
+        component: Register,
+        meta: { // we are doing these navigational guards (which we shall specify in main.js) so that some routes can only be accessed when the user is logged in
+            requiresVisitor: true,
+        }
+    },
+    {
+        path: '/logout',
+        name: 'logout',
+        component: Logout
     },
 
     // with this one, we want to illustrate the concept of route variables
